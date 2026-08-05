@@ -192,16 +192,6 @@
             background: linear-gradient(90deg, #29c98f, #baf7d9, #29c98f);
             box-shadow: 0 0 9px rgba(41,201,143,0.8), inset 0 0 2px rgba(255,255,255,0.6);
         }
-        /* Pulses right as a falling character reaches it — the "press now"
-           moment, called out instead of left implicit. */
-        #note-lane-hitline.active { animation: hitline-pulse 0.5s ease-in-out infinite; }
-        @keyframes hitline-pulse {
-            0%, 100% { height: 4px; box-shadow: 0 0 9px rgba(41,201,143,0.8), inset 0 0 2px rgba(255,255,255,0.6); }
-            50% { height: 7px; box-shadow: 0 0 20px 5px rgba(41,201,143,1), inset 0 0 3px rgba(255,255,255,0.8); }
-        }
-        @media (prefers-reduced-motion: reduce) {
-            #note-lane-hitline.active { animation: none; box-shadow: 0 0 20px 5px rgba(41,201,143,1); }
-        }
         .falling-note {
             position: absolute;
             top: 0;
@@ -910,17 +900,17 @@
     const FALL_DURATION = 2.4;
     const activeTiles = new Map(); // songNotes index -> tile element
 
-    // How close (in seconds) a falling tile has to be to the hit-line
-    // before the line itself starts pulsing — the explicit "press now"
-    // signal, instead of expecting the falling motion alone to be read
-    // as a countdown.
-    const HITLINE_PULSE_WINDOW = 0.35;
-
     function renderFallingLane(t) {
         if (mode !== 'practice') return;
         const laneH = noteLane.clientHeight;
         if (!laneH) return;
-        let pulseHitline = false;
+        // The character's feet (bottom edge of the round tile), not its
+        // top, are what should touch the hit-line — landing by top edge
+        // made the line look like it was cutting through the character's
+        // head rather than being met by its feet.
+        const whiteWpx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--white-w')) || 0;
+        const tileSize = whiteWpx * 0.74;
+        const landTop = Math.max(0, laneH - 32 - tileSize);
         songNotes.forEach((n, i) => {
             const letter = n.note[0];
             const col = laneCols[letter];
@@ -946,18 +936,13 @@
                     // it there read as "press after it's already sitting on
                     // the line," not "press as it touches it."
                     const progress = Math.max(0, 1 - timeUntil / FALL_DURATION);
-                    // 32px up from the lane bottom is where progress===1
-                    // lines up with the hit-line; past that it keeps going
-                    // and gets clipped by the lane's own overflow:hidden.
-                    tile.style.top = (progress * Math.max(0, laneH - 36)) + 'px';
-                    if (Math.abs(timeUntil) <= HITLINE_PULSE_WINDOW) pulseHitline = true;
+                    tile.style.top = (progress * landTop) + 'px';
                 }
             } else if (tile) {
                 tile.remove();
                 activeTiles.delete(i);
             }
         });
-        hitLine.classList.toggle('active', pulseHitline);
     }
 
     function markTileHit(index) {
