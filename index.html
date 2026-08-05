@@ -578,10 +578,14 @@
     function fillKey(note) {
         const total = songNoteTotals[note];
         const fillEl = keyFillEls[note];
-        if (!total || !fillEl) return;
+        const keyEl = keyByNote[note];
+        if (!total || !fillEl || !keyEl) return;
         songNoteCorrect[note] = (songNoteCorrect[note] || 0) + 1;
-        const pct = Math.min(100, (songNoteCorrect[note] / total) * 100);
-        fillEl.style.height = pct + '%';
+        const pct = Math.min(1, songNoteCorrect[note] / total);
+        // Pixels, not a CSS percentage — sidesteps any ambiguity about
+        // whether the key's own height counts as "definite" for percentage
+        // resolution on an absolutely positioned child.
+        fillEl.style.height = Math.round(pct * keyEl.clientHeight) + 'px';
     }
 
     const NOTE_LEAD = 0.6;
