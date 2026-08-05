@@ -274,15 +274,23 @@
             background: rgba(255,255,255,0.85);
             box-shadow: 0 0 6px rgba(255,255,255,0.85);
             transform-origin: 50% 50%;
-            animation: water-sway 1.7s ease-in-out infinite;
+        }
+        /* A brief splash right when the level rises, then it settles and
+           stays still — a constant infinite wobble was too much motion to
+           have sitting there the whole song, distracting from the actual
+           falling notes. */
+        .key-fill.pouring::after {
+            animation: water-sway 0.9s ease-out 1;
         }
         @keyframes water-sway {
-            0%   { transform: rotate(-5deg) translateY(0); }
-            50%  { transform: rotate(5deg) translateY(-2px); }
-            100% { transform: rotate(-5deg) translateY(0); }
+            0%   { transform: rotate(0deg) translateY(0); }
+            20%  { transform: rotate(-6deg) translateY(0); }
+            45%  { transform: rotate(4deg) translateY(-2px); }
+            70%  { transform: rotate(-2deg) translateY(0); }
+            100% { transform: rotate(0deg) translateY(0); }
         }
         @media (prefers-reduced-motion: reduce) {
-            .key-fill::after { animation: none; }
+            .key-fill.pouring::after { animation: none; }
         }
 
         .black-key {
@@ -596,6 +604,14 @@
         // whether the key's own height counts as "definite" for percentage
         // resolution on an absolutely positioned child.
         fillEl.style.height = Math.round(pct * keyEl.clientHeight) + 'px';
+
+        // Brief splash on the surface line, then it settles still — retrigger
+        // the animation even if it's already mid-splash from a moment ago.
+        fillEl.classList.remove('pouring');
+        void fillEl.offsetWidth;
+        fillEl.classList.add('pouring');
+        clearTimeout(fillEl._pourTimeout);
+        fillEl._pourTimeout = setTimeout(() => fillEl.classList.remove('pouring'), 900);
     }
 
     const NOTE_LEAD = 0.6;
