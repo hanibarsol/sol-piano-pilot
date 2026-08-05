@@ -106,11 +106,8 @@
             box-sizing: border-box;
             touch-action: none !important;
         }
-        /* Grid instead of flex: the outer two columns are the same fixed
-           width (one holds the knob, the other is an empty mirror), so the
-           cabinet in the middle column is truly centered on the page —
-           centering [knob + cabinet] as one flex group instead left the
-           piano visibly off-center, shifted by roughly the knob's width. */
+        /* Grid instead of flex: two equal empty side columns keep the
+           cabinet truly centered on the page regardless of content width. */
         #rig {
             display: grid;
             grid-template-columns: 96px auto 96px;
@@ -120,19 +117,6 @@
             width: 100%;
             overflow-x: auto;
             padding: 0 8px;
-        }
-        .knob-wrap { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 8px; touch-action: auto; padding-bottom: 6px; }
-        .knob-label { font-size: 12px; color: rgba(255,255,255,0.5); }
-        .knob {
-            width: var(--knob-size, 46px); height: var(--knob-size, 46px); border-radius: 50%;
-            background: radial-gradient(circle at 35% 30%, #565c66, #1c1e22 72%);
-            box-shadow: 0 3px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -2px 4px rgba(0,0,0,0.4);
-            position: relative; cursor: grab; touch-action: none;
-        }
-        .knob-indicator {
-            position: absolute; bottom: 50%; left: 50%; width: 4px; height: 34%; margin-left: -2px;
-            background: var(--teal); border-radius: 2px; transform-origin: 50% 100%;
-            box-shadow: 0 0 4px rgba(111,214,201,0.85);
         }
         #cabinet {
             flex-shrink: 0;
@@ -150,11 +134,31 @@
             box-shadow: 0 0 6px rgba(111,214,201,0.6);
         }
         #keywell {
+            position: relative;
             background: linear-gradient(180deg, #100f13 0%, var(--modern-lo) 100%);
             border-radius: 10px 10px 0 0;
             padding: 10px 10px 0;
             display: flex; flex-direction: column; align-items: stretch;
         }
+        /* Shown briefly whenever practice mode starts, so the "press when
+           it reaches the line" rule is explained instead of assumed. */
+        #practice-hint {
+            position: absolute;
+            top: 6px; left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            border: 1px solid rgba(111,214,201,0.4);
+            color: #fff;
+            padding: 7px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            white-space: nowrap;
+            z-index: 60;
+            opacity: 1;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+        }
+        #practice-hint.hidden { opacity: 0; }
         /* Note lane: sits directly above the keys (not up near the video),
            so a child's eyes barely have to move between "what's coming"
            and "where to press." Column widths mirror the white keys below
@@ -181,6 +185,16 @@
             position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
             background: linear-gradient(90deg, var(--teal), #d8fbf5, var(--teal));
             box-shadow: 0 0 8px rgba(111,214,201,0.75);
+        }
+        /* Pulses right as a falling character reaches it — the "press now"
+           moment, called out instead of left implicit. */
+        #note-lane-hitline.active { animation: hitline-pulse 0.5s ease-in-out infinite; }
+        @keyframes hitline-pulse {
+            0%, 100% { height: 3px; box-shadow: 0 0 8px rgba(111,214,201,0.75); }
+            50% { height: 6px; box-shadow: 0 0 18px 5px rgba(111,214,201,1); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            #note-lane-hitline.active { animation: none; box-shadow: 0 0 18px 5px rgba(111,214,201,1); }
         }
         .falling-note {
             position: absolute;
@@ -344,13 +358,11 @@
     </div>
     <div id="piano-container">
         <div id="rig">
-            <div class="knob-wrap">
-                <span class="knob-label">ווליום</span>
-                <div class="knob" id="volKnob"><div class="knob-indicator"></div></div>
-            </div>
+            <div></div>
             <div id="cabinet">
                 <div id="cabinet-lip"></div>
                 <div id="keywell">
+                    <div id="practice-hint" class="hidden">לחצי על הקליד כשהדמות מגיעה לקו! 👇</div>
                     <div id="note-lane" class="hidden"></div>
                     <div class="piano" id="piano"></div>
                 </div>
@@ -381,6 +393,17 @@
     const noteLane = document.getElementById('note-lane');
     const modeWatchBtn = document.getElementById('mode-watch');
     const modePracticeBtn = document.getElementById('mode-practice');
+    const practiceHint = document.getElementById('practice-hint');
+    let hintTimeout = null;
+    function showPracticeHint() {
+        practiceHint.classList.remove('hidden');
+        clearTimeout(hintTimeout);
+        hintTimeout = setTimeout(() => practiceHint.classList.add('hidden'), 4500);
+    }
+    function dismissPracticeHint() {
+        practiceHint.classList.add('hidden');
+        clearTimeout(hintTimeout);
+    }
 
     // Pilot: two modes instead of one screen that tries to do both jobs.
     // "צפייה" (watch) — video full-size, piano free to noodle on but with
@@ -399,6 +422,9 @@
         if (mode === 'watch') {
             activeTiles.forEach(tile => tile.remove());
             activeTiles.clear();
+            dismissPracticeHint();
+        } else {
+            showPracticeHint();
         }
         sizeKeys();
     }
@@ -798,6 +824,7 @@
                 if (key.dataset.isPlaying === "true") return;
                 key.dataset.isPlaying = "true";
                 key.classList.add('active');
+                if (mode === 'practice') dismissPracticeHint();
 
                 if (currentMode === 'piano') {
                     try { sampler.triggerAttack(fullNote); } catch (err) {}
@@ -877,10 +904,17 @@
     const FALL_DURATION = 2.4;
     const activeTiles = new Map(); // songNotes index -> tile element
 
+    // How close (in seconds) a falling tile has to be to the hit-line
+    // before the line itself starts pulsing — the explicit "press now"
+    // signal, instead of expecting the falling motion alone to be read
+    // as a countdown.
+    const HITLINE_PULSE_WINDOW = 0.35;
+
     function renderFallingLane(t) {
         if (mode !== 'practice') return;
         const laneH = noteLane.clientHeight;
         if (!laneH) return;
+        let pulseHitline = false;
         songNotes.forEach((n, i) => {
             const letter = n.note[0];
             const col = laneCols[letter];
@@ -901,12 +935,14 @@
                 if (!tile.classList.contains('hit') && !tile.classList.contains('missed')) {
                     const progress = Math.min(1, Math.max(0, 1 - timeUntil / FALL_DURATION));
                     tile.style.top = (progress * Math.max(0, laneH - 4)) + 'px';
+                    if (Math.abs(timeUntil) <= HITLINE_PULSE_WINDOW) pulseHitline = true;
                 }
             } else if (tile) {
                 tile.remove();
                 activeTiles.delete(i);
             }
         });
+        hitLine.classList.toggle('active', pulseHitline);
     }
 
     function markTileHit(index) {
@@ -931,16 +967,16 @@
     })();
 
     // Responsive key sizing: fit 7 white keys to the width left over after
-    // the volume knob and cabinet chrome. Width has no low cap — on a big
-    // screen the piano is meant to look like a real, prominent instrument,
-    // not a small widget lost in empty space. Key height is derived from
-    // key width (not a fixed vh) so proportions stay realistic at any size,
-    // and the whole cabinet is capped by available vertical space so it
-    // never crowds the video out on a short window.
+    // cabinet chrome. Width has no low cap — on a big screen the piano is
+    // meant to look like a real, prominent instrument, not a small widget
+    // lost in empty space. Key height is derived from key width (not a
+    // fixed vh) so proportions stay realistic at any size, and the whole
+    // cabinet is capped by available vertical space so it never crowds
+    // the video out on a short window.
     function sizeKeys() {
         const totalWhiteKeys = 7;
-        // Two 96px mirror columns (one holds the knob, one is empty so the
-        // cabinet stays centered) + grid gaps + cabinet/keywell padding.
+        // Two 96px mirror columns (empty, just to keep the cabinet
+        // centered) + grid gaps + cabinet/keywell padding.
         const reserved = 96 * 2 + 16 * 2 + 40;
         const rawWidth = Math.min(pianoContainer.clientWidth, window.innerWidth);
         const containerWidth = Math.max(220, rawWidth - reserved);
@@ -981,12 +1017,10 @@
         }
 
         const blackW = Math.round(whiteW * 0.495);
-        const knobSize = Math.max(40, Math.min(78, Math.round(whiteW * 0.85)));
 
         document.documentElement.style.setProperty('--white-w', whiteW + 'px');
         document.documentElement.style.setProperty('--black-w', blackW + 'px');
         document.documentElement.style.setProperty('--key-h', keyH + 'px');
-        document.documentElement.style.setProperty('--knob-size', knobSize + 'px');
         document.documentElement.style.setProperty('--lane-h', laneH + 'px');
     }
     window.addEventListener('resize', sizeKeys);
@@ -1023,28 +1057,6 @@
     // Pilot: instrument switcher UI is hidden, so currentMode stays 'piano'
     // (the real Tone.Sampler) — this keeps the focus on the falling-note
     // lane itself rather than on choosing sounds.
-
-    // Radio-style volume knob (drag vertically to turn) controlling the
-    // shared masterGain that both the sampler/reverb and the synths use.
-    const knob = document.getElementById('volKnob');
-    const knobIndicator = knob.querySelector('.knob-indicator');
-    let knobAngle = (1 / 1.8) * 270 - 135;
-    function updateKnobVisual() { knobIndicator.style.transform = 'rotate(' + knobAngle + 'deg)'; }
-    updateKnobVisual();
-    let knobDragging = false, knobStartY = 0, knobStartAngle = 0;
-    knob.addEventListener('pointerdown', function (e) {
-        knobDragging = true; knobStartY = e.clientY; knobStartAngle = knobAngle;
-        knob.setPointerCapture(e.pointerId);
-    });
-    knob.addEventListener('pointermove', function (e) {
-        if (!knobDragging) return;
-        const dy = knobStartY - e.clientY;
-        knobAngle = Math.max(-135, Math.min(135, knobStartAngle + dy * 1.5));
-        updateKnobVisual();
-        masterGain.gain.value = (knobAngle + 135) / 270 * 1.8;
-    });
-    knob.addEventListener('pointerup', function () { knobDragging = false; });
-    knob.addEventListener('pointercancel', function () { knobDragging = false; });
 
     // ?mode=practice lets a link open straight into practice mode (same
     // convenience pattern as the existing ?admin=1 for calibration).
