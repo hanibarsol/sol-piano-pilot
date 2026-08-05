@@ -216,8 +216,17 @@
                 drop-shadow(0 1px 0 rgba(0,0,0,0.55))
                 drop-shadow(0 -1px 0 rgba(0,0,0,0.55));
         }
-        .falling-note.hit { transition: transform 0.22s ease-out, opacity 0.22s ease-out; transform: translateX(-50%) scale(1.4); opacity: 0; }
-        .falling-note.missed { transition: opacity 0.3s ease-out; opacity: 0.15; }
+        /* Correct-in-time press: pop like a bubble — a quick anticipatory
+           squash, then a fast burst-and-vanish — instead of a plain fade. */
+        @keyframes bubble-pop {
+            0%   { transform: translateX(-50%) scale(1); opacity: 1; }
+            30%  { transform: translateX(-50%) scale(0.85); opacity: 1; }
+            100% { transform: translateX(-50%) scale(2.1); opacity: 0; }
+        }
+        .falling-note.hit { animation: bubble-pop 0.3s ease-out forwards; }
+        /* Missed: no freeze-and-fade — it keeps sinking (handled in JS)
+           and is just dimmed slightly so it still reads as "already past." */
+        .falling-note.missed { opacity: 0.55; }
 
         .piano {
             align-self: center;
@@ -961,13 +970,11 @@
                     col.appendChild(tile);
                     activeTiles.set(i, tile);
                 }
-                if (!tile.classList.contains('hit') && !tile.classList.contains('missed')) {
-                    // No upper clamp: the character keeps sinking smoothly
-                    // through and past the hit-line during the grace window
-                    // instead of freezing the instant it arrives. "Reaches
-                    // the line" is a passing moment, not a dwell — freezing
-                    // it there read as "press after it's already sitting on
-                    // the line," not "press as it touches it."
+                // Only a correct hit freezes it (it's popping and vanishing
+                // via its own animation). A missed note keeps sinking all
+                // the way down and off — falling past the line is what
+                // "too late" looks like, rather than hovering there fading.
+                if (!tile.classList.contains('hit')) {
                     const progress = Math.max(0, 1 - timeUntil / FALL_DURATION);
                     tile.style.top = (progress * landTop) + 'px';
                 }
@@ -985,16 +992,17 @@
         releaseColumnSlot(tile);
         tile.classList.add('hit');
         activeTiles.delete(index);
-        setTimeout(() => tile.remove(), 260);
+        setTimeout(() => tile.remove(), 300);
     }
 
     function markTileMissed(index) {
+        // Just dims it — deliberately doesn't remove it from activeTiles or
+        // the DOM. It stays tracked so renderFallingLane keeps sinking it
+        // like normal; natural cleanup (once it scrolls out of the visible
+        // window) is what finally removes it and frees its column slot.
         const tile = activeTiles.get(index);
         if (!tile) return;
-        releaseColumnSlot(tile);
         tile.classList.add('missed');
-        activeTiles.delete(index);
-        setTimeout(() => tile.remove(), 320);
     }
 
     (function fallLoop() {
