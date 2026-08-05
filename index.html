@@ -252,6 +252,29 @@
 
         .white-key { width: var(--white-w); height: 100%; background-color: white; border-radius: 0 0 5px 5px; }
 
+        /* "Fills up like a glass of water" — rises a notch with every
+           correct-in-time press, behind the character but above the key's
+           own background, so by the end of the song each key shows its
+           own little results bar. */
+        .key-fill {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 0%;
+            z-index: -1;
+            pointer-events: none;
+            border-radius: 0 0 5px 5px;
+            background: linear-gradient(180deg, rgba(130,226,255,0.4), rgba(41,150,201,0.75));
+            transition: height 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .key-fill::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: rgba(255,255,255,0.85);
+            box-shadow: 0 0 6px rgba(255,255,255,0.85);
+        }
+
         .black-key {
             width: var(--black-w);
             height: 45%;
@@ -543,6 +566,24 @@
     const songLetters = ['G', 'E', 'A', 'B', 'F', 'D', 'C', 'D', 'E', 'F', 'G', 'A', 'B'];
     const songNotes = songTimes.map((t, i) => ({ time: t, note: songLetters[i] + '4' }));
 
+    // Per-key "fill" progress (idea: each correct-in-time press fills up
+    // the key a little, like pouring water into a glass — by the end of
+    // the song, how full each key got shows how well that note went).
+    // Denominator is how many times that exact key is due across the
+    // whole song; numerator is how many of those were hit correctly.
+    const songNoteTotals = {};
+    songNotes.forEach(n => { songNoteTotals[n.note] = (songNoteTotals[n.note] || 0) + 1; });
+    const songNoteCorrect = {};
+    const keyFillEls = {};
+    function fillKey(note) {
+        const total = songNoteTotals[note];
+        const fillEl = keyFillEls[note];
+        if (!total || !fillEl) return;
+        songNoteCorrect[note] = (songNoteCorrect[note] || 0) + 1;
+        const pct = Math.min(100, (songNoteCorrect[note] / total) * 100);
+        fillEl.style.height = pct + '%';
+    }
+
     const NOTE_LEAD = 0.6;
     const NOTE_TAIL = 0.45;
     let songIdx = 0;
@@ -823,6 +864,13 @@
             key.dataset.isPlaying = "false";
             keyByNote[fullNote] = key;
 
+            if (songNoteTotals[fullNote]) {
+                const fillEl = document.createElement('div');
+                fillEl.className = 'key-fill';
+                key.appendChild(fillEl);
+                keyFillEls[fullNote] = fillEl;
+            }
+
             if (!isBlack) {
                 const img = document.createElement('img');
                 img.src = characterImages[whiteKeyIndex] || "";
@@ -852,6 +900,7 @@
                         if (t >= cur.time - NOTE_LEAD && t <= cur.time + NOTE_TAIL) {
                             songHit = true;
                             markTileHit(songIdx);
+                            fillKey(fullNote);
                             key.classList.add('correct-flash');
                             const star = document.createElement('div');
                             star.className = 'star-pop';
