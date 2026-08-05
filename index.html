@@ -274,13 +274,12 @@
             background: rgba(255,255,255,0.85);
             box-shadow: 0 0 6px rgba(255,255,255,0.85);
             transform-origin: 50% 50%;
-            animation: water-sway 2.6s ease-in-out infinite;
+            animation: water-sway 1.7s ease-in-out infinite;
         }
-        /* A gentle tilt, not a wave — just enough that the surface reads
-           as liquid rather than a static painted line. */
         @keyframes water-sway {
-            0%, 100% { transform: rotate(-1.5deg) translateY(0); }
-            50%      { transform: rotate(1.5deg) translateY(-1px); }
+            0%   { transform: rotate(-5deg) translateY(0); }
+            50%  { transform: rotate(5deg) translateY(-2px); }
+            100% { transform: rotate(-5deg) translateY(0); }
         }
         @media (prefers-reduced-motion: reduce) {
             .key-fill::after { animation: none; }
