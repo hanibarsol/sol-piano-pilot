@@ -190,32 +190,20 @@
             background: linear-gradient(90deg, #29c98f, #baf7d9, #29c98f);
             box-shadow: 0 0 9px rgba(41,201,143,0.8), inset 0 0 2px rgba(255,255,255,0.6);
         }
-        /* Shows the whole character (not a cropped circular avatar) so its
-           feet are actually visible landing on the hit-line, at their real
-           proportions — the character images are portrait, 1280x1600. */
         .falling-note {
             position: absolute;
             top: 0;
             left: 50%;
-            width: calc(var(--white-w) * 0.68);
-            aspect-ratio: 1280 / 1600;
+            width: calc(var(--white-w) * 0.74);
+            height: calc(var(--white-w) * 0.74);
             transform: translateX(-50%);
+            border-radius: 50%;
+            overflow: hidden;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.5), 0 0 0 2px rgba(255,255,255,0.15);
+            background: #333;
             pointer-events: none;
         }
-        .falling-note img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            display: block;
-            /* Thin soft-black contour around the character's own silhouette
-               (the PNGs have transparent backgrounds), so it stays legible
-               against the dark lane. */
-            filter:
-                drop-shadow(1px 0 0 rgba(0,0,0,0.55))
-                drop-shadow(-1px 0 0 rgba(0,0,0,0.55))
-                drop-shadow(0 1px 0 rgba(0,0,0,0.55))
-                drop-shadow(0 -1px 0 rgba(0,0,0,0.55));
-        }
+        .falling-note img { width: 100%; height: 100%; object-fit: cover; display: block; }
         /* Correct-in-time press: pop like a bubble — a quick anticipatory
            squash, then a fast burst-and-vanish — instead of a plain fade. */
         @keyframes bubble-pop {
@@ -934,14 +922,10 @@
         if (mode !== 'practice') return;
         const laneH = noteLane.clientHeight;
         if (!laneH) return;
-        // The character's feet (bottom edge of the round tile), not its
-        // top, are what should touch the hit-line — landing by top edge
-        // made the line look like it was cutting through the character's
-        // head rather than being met by its feet.
+        // Lands so the tile's own bottom edge meets the hit-line, not its top.
         const whiteWpx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--white-w')) || 0;
-        const tileWidth = whiteWpx * 0.68;
-        const tileHeight = tileWidth * (1600 / 1280); // matches the portrait character art
-        const landTop = Math.max(0, laneH - tileHeight);
+        const tileSize = whiteWpx * 0.74;
+        const landTop = Math.max(0, laneH - tileSize);
         songNotes.forEach((n, i) => {
             const letter = n.note[0];
             const col = laneCols[letter];
