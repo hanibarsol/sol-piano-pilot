@@ -424,6 +424,7 @@
         <button id="audio-toggle" class="hidden active" title="ליווי קול">🔊</button>
     </div>
     <div id="speed-bar">
+        <button id="play-pause" class="speed-step-btn">⏸</button>
         <button id="speed-minus" class="speed-step-btn">－</button>
         <button id="speed-reset" class="is-normal">מהירות</button>
         <button id="speed-plus" class="speed-step-btn">＋</button>
@@ -576,6 +577,18 @@
     speedMinusBtn.addEventListener('click', () => applySpeed(speedIndex - 1));
     speedPlusBtn.addEventListener('click', () => applySpeed(speedIndex + 1));
     speedResetBtn.addEventListener('click', () => applySpeed(2));
+
+    // Pause/resume — the falling notes and due-highlight are both driven
+    // off player.getCurrentTime() every frame, so pausing the video just
+    // naturally freezes them in place too; nothing extra needed for that.
+    const playPauseBtn = document.getElementById('play-pause');
+    let isPaused = false;
+    playPauseBtn.addEventListener('click', () => {
+        if (!player) return;
+        isPaused = !isPaused;
+        if (isPaused) { player.pauseVideo(); playPauseBtn.textContent = '▶'; }
+        else { player.playVideo(); playPauseBtn.textContent = '⏸'; }
+    });
 
     // --- Calibration tool: tap "mark now" every time a character hits the green
     // line, and it logs the exact video timestamp. Not part of the kids' UI —
