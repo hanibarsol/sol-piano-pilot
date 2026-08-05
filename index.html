@@ -585,7 +585,7 @@
 
     // A subtle reverb gives the notes a gentle "sustain pedal" quality —
     // like they keep resonating in the room rather than stopping dead.
-    const reverb = new Tone.Reverb({ decay: 2.5, wet: 0.22 }).connect(masterGain);
+    const reverb = new Tone.Reverb({ decay: 2.5, wet: 0.32 }).connect(masterGain);
 
     const sampler = new Tone.Sampler({
         urls: sampleUrls,
