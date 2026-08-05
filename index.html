@@ -194,16 +194,21 @@
             position: absolute;
             top: 0;
             left: 50%;
-            width: calc(var(--white-w) * 0.74);
-            height: calc(var(--white-w) * 0.74);
+            width: calc(var(--white-w) * 0.6);
+            height: calc(var(--white-w) * 0.6);
             transform: translateX(-50%);
             border-radius: 50%;
             overflow: hidden;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.5), 0 0 0 2px rgba(255,255,255,0.15);
+            border: 2px solid rgba(0,0,0,0.85);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.5);
             background: #333;
             pointer-events: none;
         }
-        .falling-note img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        /* object-fit: contain (not cover) — cover was cropping into a
+           mostly-transparent margin around the character at random,
+           different amounts every time, which read as "unstable." contain
+           always shows the whole figure, consistently framed. */
+        .falling-note img { width: 100%; height: 100%; object-fit: contain; display: block; }
         /* Correct-in-time press: pop like a bubble — a quick anticipatory
            squash, then a fast burst-and-vanish — instead of a plain fade. */
         @keyframes bubble-pop {
@@ -907,16 +912,6 @@
     // coming next.
     const FALL_DURATION = 2.4;
     const activeTiles = new Map(); // songNotes index -> tile element
-    // How many tiles currently occupy each column — repeated notes (e.g.
-    // three E's in a row) can be close enough in time that two are falling
-    // in the same lane at once. Without this they'd render stacked exactly
-    // on top of each other and read as one flickering character.
-    const colActiveCount = {};
-
-    function releaseColumnSlot(tile) {
-        const letter = tile.dataset.letter;
-        if (letter && colActiveCount[letter] > 0) colActiveCount[letter]--;
-    }
 
     function renderFallingLane(t) {
         if (mode !== 'practice') return;
@@ -924,7 +919,7 @@
         if (!laneH) return;
         // Lands so the tile's own bottom edge meets the hit-line, not its top.
         const whiteWpx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--white-w')) || 0;
-        const tileSize = whiteWpx * 0.74;
+        const tileSize = whiteWpx * 0.6;
         const landTop = Math.max(0, laneH - tileSize);
         songNotes.forEach((n, i) => {
             const letter = n.note[0];
@@ -935,22 +930,14 @@
             let tile = activeTiles.get(i);
             if (visible) {
                 if (!tile) {
+                    // Always centered — same-letter notes close together in
+                    // time fall in the same spot, on purpose (their spacing
+                    // comes from timing, not from being nudged sideways).
                     tile = document.createElement('div');
                     tile.className = 'falling-note';
                     const img = document.createElement('img');
                     img.src = characterImages[noteLetterOrder.indexOf(letter)] || '';
                     tile.appendChild(img);
-                    tile.dataset.letter = letter;
-                    const slot = colActiveCount[letter] || 0;
-                    colActiveCount[letter] = slot + 1;
-                    if (slot > 0) {
-                        // Nudge sideways, alternating right/left, so a
-                        // repeated note doesn't sit exactly on top of the
-                        // one already falling in this column.
-                        const dir = slot % 2 === 1 ? 1 : -1;
-                        const step = Math.ceil(slot / 2);
-                        tile.style.left = 'calc(50% + ' + (dir * step * whiteWpx * 0.42) + 'px)';
-                    }
                     col.appendChild(tile);
                     activeTiles.set(i, tile);
                 }
@@ -963,7 +950,6 @@
                     tile.style.top = (progress * landTop) + 'px';
                 }
             } else if (tile) {
-                releaseColumnSlot(tile);
                 tile.remove();
                 activeTiles.delete(i);
             }
@@ -973,7 +959,6 @@
     function markTileHit(index) {
         const tile = activeTiles.get(index);
         if (!tile) return;
-        releaseColumnSlot(tile);
         tile.classList.add('hit');
         activeTiles.delete(index);
         setTimeout(() => tile.remove(), 300);
