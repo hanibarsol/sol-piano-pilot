@@ -910,6 +910,16 @@
     // coming next.
     const FALL_DURATION = 2.4;
     const activeTiles = new Map(); // songNotes index -> tile element
+    // How many tiles currently occupy each column — repeated notes (e.g.
+    // three E's in a row) can be close enough in time that two are falling
+    // in the same lane at once. Without this they'd render stacked exactly
+    // on top of each other and read as one flickering character.
+    const colActiveCount = {};
+
+    function releaseColumnSlot(tile) {
+        const letter = tile.dataset.letter;
+        if (letter && colActiveCount[letter] > 0) colActiveCount[letter]--;
+    }
 
     function renderFallingLane(t) {
         if (mode !== 'practice') return;
@@ -937,6 +947,17 @@
                     const img = document.createElement('img');
                     img.src = characterImages[noteLetterOrder.indexOf(letter)] || '';
                     tile.appendChild(img);
+                    tile.dataset.letter = letter;
+                    const slot = colActiveCount[letter] || 0;
+                    colActiveCount[letter] = slot + 1;
+                    if (slot > 0) {
+                        // Nudge sideways, alternating right/left, so a
+                        // repeated note doesn't sit exactly on top of the
+                        // one already falling in this column.
+                        const dir = slot % 2 === 1 ? 1 : -1;
+                        const step = Math.ceil(slot / 2);
+                        tile.style.left = 'calc(50% + ' + (dir * step * whiteWpx * 0.42) + 'px)';
+                    }
                     col.appendChild(tile);
                     activeTiles.set(i, tile);
                 }
@@ -951,6 +972,7 @@
                     tile.style.top = (progress * landTop) + 'px';
                 }
             } else if (tile) {
+                releaseColumnSlot(tile);
                 tile.remove();
                 activeTiles.delete(i);
             }
@@ -960,6 +982,7 @@
     function markTileHit(index) {
         const tile = activeTiles.get(index);
         if (!tile) return;
+        releaseColumnSlot(tile);
         tile.classList.add('hit');
         activeTiles.delete(index);
         setTimeout(() => tile.remove(), 260);
@@ -968,6 +991,7 @@
     function markTileMissed(index) {
         const tile = activeTiles.get(index);
         if (!tile) return;
+        releaseColumnSlot(tile);
         tile.classList.add('missed');
         activeTiles.delete(index);
         setTimeout(() => tile.remove(), 320);
