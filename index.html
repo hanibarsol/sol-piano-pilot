@@ -219,9 +219,6 @@
             100% { transform: translateX(-50%) scale(2.1); opacity: 0; }
         }
         .falling-note.hit { animation: bubble-pop 0.3s ease-out forwards; }
-        /* Missed: no freeze-and-fade — it keeps sinking (handled in JS)
-           and is just dimmed slightly so it still reads as "already past." */
-        .falling-note.missed { opacity: 0.55; }
 
         .piano {
             align-self: center;
@@ -1002,6 +999,11 @@
         const whiteWpx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--white-w')) || 0;
         const tileSize = whiteWpx * 0.6;
         const landTop = Math.max(0, laneH - tileSize);
+        // Past the line, progress keeps climbing above 1 (no upper clamp).
+        // Fade it out smoothly over that stretch so it dissolves before it
+        // would otherwise get abruptly clipped by the lane's own edge —
+        // that clip was the "flicker right before it disappears."
+        const progressCutoff = 1 + (NOTE_TAIL + 0.3) / FALL_DURATION;
         songNotes.forEach((n, i) => {
             const letter = n.note[0];
             const col = laneCols[letter];
@@ -1029,6 +1031,10 @@
                 if (!tile.classList.contains('hit')) {
                     const progress = Math.max(0, 1 - timeUntil / FALL_DURATION);
                     tile.style.top = (progress * landTop) + 'px';
+                    if (progress > 1) {
+                        const fade = Math.min(1, (progress - 1) / (progressCutoff - 1));
+                        tile.style.opacity = String(Math.max(0, 1 - fade));
+                    }
                 }
             } else if (tile) {
                 tile.remove();
@@ -1045,15 +1051,6 @@
         setTimeout(() => tile.remove(), 300);
     }
 
-    function markTileMissed(index) {
-        // Just dims it — deliberately doesn't remove it from activeTiles or
-        // the DOM. It stays tracked so renderFallingLane keeps sinking it
-        // like normal; natural cleanup (once it scrolls out of the visible
-        // window) is what finally removes it and frees its column slot.
-        const tile = activeTiles.get(index);
-        if (!tile) return;
-        tile.classList.add('missed');
-    }
 
     (function fallLoop() {
         if (player && player.getCurrentTime) renderFallingLane(player.getCurrentTime());
@@ -1142,7 +1139,6 @@
 
         if (t > cur.time + NOTE_TAIL) {
             if (keyEl) keyEl.classList.remove('due');
-            if (mode === 'practice' && !songHit) markTileMissed(songIdx);
             songIdx++;
             songHit = false;
         }
