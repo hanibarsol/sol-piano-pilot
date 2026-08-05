@@ -187,7 +187,7 @@
            screen that means "press now" — rather than blending into the
            lane background or being confused with the decorative strip. */
         #note-lane-hitline {
-            position: absolute; left: 0; right: 0; bottom: 14px; height: 4px;
+            position: absolute; left: 0; right: 0; bottom: 32px; height: 4px;
             border-radius: 2px;
             background: linear-gradient(90deg, #29c98f, #baf7d9, #29c98f);
             box-shadow: 0 0 9px rgba(41,201,143,0.8), inset 0 0 2px rgba(255,255,255,0.6);
@@ -940,9 +940,9 @@
                 }
                 if (!tile.classList.contains('hit') && !tile.classList.contains('missed')) {
                     const progress = Math.min(1, Math.max(0, 1 - timeUntil / FALL_DURATION));
-                    // Lands at the hit-line's raised position (14px up from
+                    // Lands at the hit-line's raised position (32px up from
                     // the lane bottom), not the very bottom of the lane.
-                    tile.style.top = (progress * Math.max(0, laneH - 18)) + 'px';
+                    tile.style.top = (progress * Math.max(0, laneH - 36)) + 'px';
                     if (Math.abs(timeUntil) <= HITLINE_PULSE_WINDOW) pulseHitline = true;
                 }
             } else if (tile) {
