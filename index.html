@@ -939,9 +939,16 @@
                     activeTiles.set(i, tile);
                 }
                 if (!tile.classList.contains('hit') && !tile.classList.contains('missed')) {
-                    const progress = Math.min(1, Math.max(0, 1 - timeUntil / FALL_DURATION));
-                    // Lands at the hit-line's raised position (32px up from
-                    // the lane bottom), not the very bottom of the lane.
+                    // No upper clamp: the character keeps sinking smoothly
+                    // through and past the hit-line during the grace window
+                    // instead of freezing the instant it arrives. "Reaches
+                    // the line" is a passing moment, not a dwell — freezing
+                    // it there read as "press after it's already sitting on
+                    // the line," not "press as it touches it."
+                    const progress = Math.max(0, 1 - timeUntil / FALL_DURATION);
+                    // 32px up from the lane bottom is where progress===1
+                    // lines up with the hit-line; past that it keeps going
+                    // and gets clipped by the lane's own overflow:hidden.
                     tile.style.top = (progress * Math.max(0, laneH - 36)) + 'px';
                     if (Math.abs(timeUntil) <= HITLINE_PULSE_WINDOW) pulseHitline = true;
                 }
