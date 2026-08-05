@@ -979,7 +979,12 @@
                     synthNoteOn(key, freq);
                 }
 
-                if (mode === 'practice' && !songHit && songIdx < songNotes.length && player && player.getCurrentTime) {
+                // Feedback runs in both modes now — Hani's own narration in
+                // the lesson video tells the child to press the key the
+                // moment a character reaches the video's green line, so
+                // "watch" was never meant to mean "don't play." Only the
+                // falling-note lane and mini-video are practice-only.
+                if (!songHit && songIdx < songNotes.length && player && player.getCurrentTime) {
                     const cur = songNotes[songIdx];
                     if (fullNote === cur.note) {
                         const t = player.getCurrentTime();
@@ -1194,7 +1199,7 @@
         const keyEl = keyByNote[cur.note];
         const inWindow = t >= cur.time - NOTE_LEAD && t <= cur.time + NOTE_TAIL;
 
-        if (mode === 'practice' && keyEl) keyEl.classList.toggle('due', inWindow);
+        if (keyEl) keyEl.classList.toggle('due', inWindow);
 
         if (t > cur.time + NOTE_TAIL) {
             if (keyEl) keyEl.classList.remove('due');
