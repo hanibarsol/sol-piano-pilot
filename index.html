@@ -59,6 +59,28 @@
         }
         .mode-btn.active { background: var(--teal); color: #0a1210; border-color: var(--teal); font-weight: bold; }
 
+        /* Practice-only: toggles whether the video's own audio (the song +
+           Hani singing along) is heard while the child plays, independent
+           of the piano's own sound. Hidden outside practice mode. */
+        #audio-toggle {
+            touch-action: auto;
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: #262626;
+            color: rgba(255,255,255,0.35);
+            font-size: 17px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+        #audio-toggle.hidden { display: none; }
+        #audio-toggle.active {
+            background: radial-gradient(circle at 35% 30%, #4fa3ff, #1a5fc4 75%);
+            border-color: #7ec4ff;
+            color: #fff;
+            box-shadow: 0 0 8px 2px rgba(79,163,255,0.75);
+        }
+
         #speed-bar {
             flex: 0 0 auto;
             display: flex;
@@ -399,6 +421,7 @@
     <div id="mode-bar">
         <button id="mode-watch" class="mode-btn active">👀 צפייה</button>
         <button id="mode-practice" class="mode-btn">🎹 תרגול</button>
+        <button id="audio-toggle" class="hidden active" title="ליווי קול">🔊</button>
     </div>
     <div id="speed-bar">
         <button id="speed-minus" class="speed-step-btn">－</button>
@@ -442,6 +465,7 @@
     const noteLane = document.getElementById('note-lane');
     const modeWatchBtn = document.getElementById('mode-watch');
     const modePracticeBtn = document.getElementById('mode-practice');
+    const audioToggleBtn = document.getElementById('audio-toggle');
     const practiceHint = document.getElementById('practice-hint');
     let hintTimeout = null;
     function showPracticeHint() {
@@ -462,12 +486,27 @@
     // becomes the main thing to look at, so eyes don't have to jump
     // between a video up top and a keyboard down below.
     let mode = 'watch';
+    // Practice-only: whether the video's own audio (song + Hani singing
+    // along) plays while the child practices, independent of the piano's
+    // own sound. Defaults on — a young child just starting out benefits
+    // from that safety net; anyone who wants a solo, silent-backing
+    // experience can switch it off themselves.
+    let audioOn = true;
+    function applyAudioState() {
+        if (!player) return;
+        if (mode === 'practice' && !audioOn) {
+            if (player.mute) player.mute();
+        } else {
+            if (player.unMute) player.unMute();
+        }
+    }
     function setMode(next) {
         mode = next;
         videoWrap.classList.toggle('mini', mode === 'practice');
         noteLane.classList.toggle('hidden', mode !== 'practice');
         modeWatchBtn.classList.toggle('active', mode === 'watch');
         modePracticeBtn.classList.toggle('active', mode === 'practice');
+        audioToggleBtn.classList.toggle('hidden', mode !== 'practice');
         if (mode === 'watch') {
             activeTiles.forEach(tile => tile.remove());
             activeTiles.clear();
@@ -475,10 +514,17 @@
         } else {
             showPracticeHint();
         }
+        applyAudioState();
         sizeKeys();
     }
     modeWatchBtn.addEventListener('click', () => setMode('watch'));
     modePracticeBtn.addEventListener('click', () => setMode('practice'));
+    audioToggleBtn.addEventListener('click', () => {
+        audioOn = !audioOn;
+        audioToggleBtn.classList.toggle('active', audioOn);
+        audioToggleBtn.textContent = audioOn ? '🔊' : '🔇';
+        applyAudioState();
+    });
 
     // Calibration tool is dev-only: hidden from students, shown only when
     // building/checking a song's timing map via ?admin=1 in the URL.
